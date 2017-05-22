@@ -1,97 +1,149 @@
 ;;todo: remove from leaves, anys etc from results as they are not needed, only the vals are
 ;; (import (srfi11))
+;; (define style 'style1)
+(define style 'style2)
+;; (define style 'style3)
+;; (define style 'style4)
 
-(define (merge-list lst)
-  (foldl (lambda (x r) (map cons x r))
-         (map list (car lst))
-         (cdr lst)))
-(merge-list '((1 2 3) ( a b c) (q r s)))
+;; (define (query-branch-end qs as bs rs depth)
+;;   (if (equal? qs '(branch))
+;;       (values as bs
+;;               (cond [(or (equal? 'style1 style) (equal? 'style2 style))
+;;                      rs]
+;;                     [(or (equal? 'style3 style) (equal? 'style4 style))
+;;                      (cons 'branch rs)]
+;;                     [else (error "no style.")])
+;;               #t)
+;;       #f))
+;; (define (query-qs-done qs as bs rs depth)
+;;   (if (null? qs)
+;;       (values as bs rs #t)
+;;      #f))
 
-(map (lambda (x y) (list x y)) '(a b c) '(1 2 3))
+;; (define (query-as-done qs as bs rs depth)
+;;   (if (null? qs)
+;;       (values as bs rs #t)
+;;       #f))
+
+
+(define (rs-ret0 x rs)
+  (cond [(or (equal? 'style1 style) (equal? 'style2 style))
+         rs]
+        [(or (equal? 'style3 style) (equal? 'style4 style))
+         (cons x rs)]
+        [else (error "no style.")]) )
+
+(define (rs-ret2 x as rs)
+  (cond [(or (equal? 'style1 style) (equal? 'style2 style))
+         (cons (car as) rs)]
+        [(equal? 'style3 style)
+         (cons (list x (car as)) rs)] ;; (cadr qs)
+        [(equal? 'style4 style)
+         (list x (car as))] ;; (cadr qs)
+        [else (error "no style.")]) )
+
+(define (rs-ret5 x rs)
+  (cond [(or (equal? 'style1 style) (equal? 'style2 style)) rs]
+        [(or (equal? 'style3 style) (equal? 'style4 style))
+         (cons x (cdr rs))]
+        [else (error "no style.")]) )
+
+(define (rs-param0 rs)
+  (cond [(or (equal? 'style1 style) (equal? 'style2 style))
+         rs]
+        [(or (equal? 'style3 style) (equal? 'style4 style))
+         (cdr rs)]
+        [else (error "no style.")]) )
+
+(define (rs-param1 rs)
+  (cond [(equal? 'style1 style)
+         rs]
+        [(or (equal? 'style2 style)
+             (equal? 'style3 style)
+             (equal? 'style4 style))
+         '()]
+        [else (error "no style.")]) )
+
+(define (rs-param2 rs rs2)
+  (cond [(equal? 'style1 style) rs2]
+        [(or (equal? 'style2 style)
+             (equal? 'style3 style)
+             (equal? 'style4 style))
+         (cons rs2 rs)]
+        [else (error "no style.")]) )
+
+(define (rs-param3 rs rs2)
+  (cond [(or (equal? 'style1 style) (equal? 'style2 style)) rs2]
+        [(or (equal? 'style3 style) (equal? 'style4 style)) (cons rs2 rs)]
+        [else (error "no style.")]) )
+
+
 
 (define (query2 qs as bs rs depth)
   (cond [(equal? qs '(branch))
          ;;at end of branch parsing
-         (values as bs rs #t)]
+         (values as bs (rs-ret0 'branch rs) #t)]
         [(null? qs)
          ;;on no more queries
          (values as bs rs #t)]
         [(and (null? as) (equal? 'many0 (car qs)))
          ;;on no more input, at end of many parsing
-         (values '() bs rs #t)]
+         (values '() bs (rs-ret0 'many rs) #t)]
         [(null? as)
          ;;no more input and queries left
          (values '() bs rs #f)]
         [(equal? 'value (car qs))
          ;;on value parsing
-         (if (list? (car as))
-             (values (cdr as) (cons (car as) bs) rs #f)
-             (values (cdr as) bs (cons (car as) rs) #t))]
+         (values (cdr as) bs (rs-ret2 'value as rs) #t)]
         [(equal? 'any (car qs))
          ;;on any parsing
-         (if (list? (car as))
-             (values (cdr as) (cons (car as) bs) rs #f)
-             (values (cdr as) bs (cons (car as) rs) #t))]
+         (values (cdr as) bs (rs-ret2 'any as rs) #t)]
         [(equal? 'leaf (car qs))
          ;;on leaf parsing
          (if (equal? (cadr qs) (car as))
-             (values (cdr as) bs (cons (car as) rs) #t)
+             (values (cdr as) bs (rs-ret2 'leaf as rs) #t)
              (values (cdr as) (cons (car as) bs) rs #f))]
         [(equal? 'relative0 (car qs))
          (if (list? (car as))
              (let-values ([(as2 bs2 rs2 ok2)
                    (query2 (cons 'relative (cdr qs)) (car as) '() rs (+ 1 depth))])
                (if ok2
-                   (values (cons (append-reverse bs2 as2) (cdr as)) bs rs2 #t)
+                   (values (cons (append-reverse bs2 as2) (cdr as)) bs (rs-ret5 'relative rs2) #t)
                    (query2 qs (cdr as) (cons (car as) bs) rs depth) ))
              (query2 qs (cdr as) (cons (car as) bs) rs depth) )]
         [(equal? 'relative (car qs))
          (let-values ([(as2 bs2 rs2 ok2)
                (query2 (cons 'branch (cdr qs)) as bs rs (+ 1 depth))])
            (if ok2
-               (values as2 bs2 rs2 #t)
+               (values as2 bs2 (rs-ret5 'relative rs2) #t)
                (query2 (cons 'relative0 (cdr qs)) as bs rs depth) ))]
         [(or (equal? 'many (car qs))
              (equal? 'many0 (car qs)))
          ;;on many starting or continuing parsing
          (let-values ([(as2 bs2 rs2 ok2)
                ;;try query within many query
-               (query2 (list 'branch (cadr qs)) as bs '() (+ 1 depth))])
+               (query2 (list 'branch (cadr qs)) as bs rs (+ 1 depth))])
            (cond [ok2
                   ;;on success, try query again from last pos
-                  (query2 (cons 'many0 (cdr qs)) as2 bs2 (cons rs2 rs) depth)]
+                  (query2 (cons 'many0 (cdr qs)) as2 bs2 (rs-param0 rs2) depth)]
                  [(equal? 'many0 (car qs))
                   ;;on fail and a continued many, return sucess
-                  (values as bs rs #t)]
+                  (values as bs (rs-ret0 'many rs) #t)]
                  [else
                   ;;on fail and a first many, return failed
                   (values as2 bs2 rs2 #f)]))]
         [(equal? 'branch (car qs))
          ;;on branch
-         (cond [(equal? 'relative (caadr qs))
-                ;;on inner relative
+         (cond [(or (equal? 'many (caadr qs))
+                    (equal? 'relative (caadr qs)))
+                ;;on inner many or relative
                 (let-values ([(as2 bs2 rs2 ok2)
-                      ;;try inner relative query
-                      (query2 (cadr qs) as bs '() (+ 1 depth))])
+                      ;;try inner many/relative query
+                      (query2 (cadr qs) as bs (rs-param1 rs) (+ 1 depth))])
                   (if ok2
                       ;;on success, try next query within branch and restore
                       ;;discarded input
-                      (query2 (cons 'branch (cddr qs)) (append-reverse bs2 as2) '() (cons rs2 rs) depth)
-                      ;;on fail, return failed
-                      (values as2 bs2 rs #f)
-                      ))]
-               [(equal? 'many (caadr qs))
-                ;;on inner many
-                (let-values ([(as2 bs2 rs2 ok2)
-                              ;;try inner many query
-                              (query2 (cadr qs) as bs '() (+ 1 depth))])
-                  (if ok2
-                      ;;on success, try next query within branch and restore
-                      ;;discarded input
-                      (query2 (cons 'branch (cddr qs)) (append-reverse bs2 as2) '()
-                              (append
-                                     (merge-list rs2)
-                                      rs) depth)
+                      (query2 (cons 'branch (cddr qs)) (append-reverse bs2 as2) '() (rs-param2 rs rs2) depth)
                       ;;on fail, return failed
                       (values as2 bs2 rs #f)
                       ))]
@@ -99,11 +151,11 @@
                 ;;on inner branch and current input element is a list
                 (let-values ([(as2 bs2 rs2 ok2)
                       ;;try inner branch query
-                      (query2 (cadr qs) (car as) '() rs (+ 1 depth))])
+                      (query2 (cadr qs) (car as) '() '() (+ 1 depth))])
                   (if ok2
                       ;;on success, try next query within branch and restore
                       ;;discarded input
-                      (query2 (cons 'branch (cddr qs)) (append-reverse bs (cdr as)) '() rs2 depth)
+                      (query2 (cons 'branch (cddr qs)) (append-reverse bs (cdr as)) '() (cons rs2 rs) depth)
                       ;;on fail, try the same query on the next input element,
                       ;;discarding current input element
                       (query2 qs (cdr as) (cons (car as) bs) rs depth) ))]
@@ -120,14 +172,14 @@
                   (if ok2
                       ;;on success, try next query within branch and restore
                       ;;discarded input
-                      (query2 (cons 'branch (cddr qs)) (append-reverse bs2 as2) '() rs2 depth)
+                      (query2 (cons 'branch (cddr qs)) (append-reverse bs2 as2) '() (rs-param3 rs rs2) depth)
                       ;;on fail, try the same query on the next input element,
                       ;;discarding current input element
                       (query2 qs as2 bs2 rs depth) ))])]
         [else
          ;;unable to parse query
          ;; (values as bs rs #f)
-         (error "problem with" qs as bs rs) ]))
+         (error "problem with ~a" qs) ]))
 
 (define (append-reverse lst tail)
   ;; (append lst tail)
@@ -166,68 +218,73 @@
         rs2
         '())))
 
+(define (reverse-query qs)
+  (reverse qs))
+;; (define (group-values qs rs)
+;;   1)
 
+;; (define (pattern->query p)
+;;   (cond [])
+;;   `(branch)
+;;   1)
 
-
-
-
-;; (define-syntax (qmatch-case stx)
-;;   (syntax-case stx ()
-;;     [(_ x (c0 r0) ) #'2]
-;;     [(_ x (c0 r0) (c r) ... (else e)) #'1]
-;;     [(_ x (c0 r0) (c r) ... (else e)) #'1]
-
-;;     ))
-
-;; (define-syntax (qmatch stx)
-;;   (syntax-case stx (else)
-;;     ;; [(_ ) #'(error "query match: expecting input.")]
-;;     ;; [(_ x) #'(error "query match: expecting cases.")]
-;;     [(_ x (c0 r0) ) #'2]
-;;     [(_ x (c0 r0) (c r) ... (else e)) #'1]
-;;     [(_ x (c0 r0) (c r) ... (else e)) #'1]
-
-;;     ))
-
-
-;; (qmatch '(html (body (p "hello")))
-;;   [a b]
-;;   [c d]
-;;   [else e]
-;;   )
-
-
-
-;; (define-syntax (qqq stx)
-;;   (syntax-case stx ()
-;;     [(_ x ,y ) #'(quote ,y)]
-
-;;     ))
-;; (qqq 1 ,())
-
-(let* ([q '(branch (leaf body)
-                   (many (branch (leaf p) (value)
-                                 (many (branch (leaf a) (value)))
-                                 ))
-                   (many (value))
-                   (branch (leaf y) (branch (leaf z) (leaf w)))
-                   )]
-       [d '(body
-            "yo" "hello"
-            (p "hello" (a "world") (a "there")) (p "x" (a "y"))
-            ;; (p "hello") (p "world")
-            (y (z w))
+(let* ([q '(branch
+            (leaf q)
+            (many (branch (leaf a) (value) (any)))
+            ;; (relative (branch (leaf b) (any) (value)))
             )]
+       [d '(q (q (b 1 11) (c 2 22)) (a 3 33) (a 4 44))]
        [r (query q d)]
        ;; [x (group-values q r)]
        )
 
   (pretty-print q)
-  ;; (pretty-print (reverse-query q))
+  (pretty-print (reverse-query q))
   (pretty-print d)
   (pretty-print r)
-
 
   ;; (pretty-print x)
   ;; (pretty-print (reverse-query q))
   )
+;; (query-pattern '(a))
+
+;; (require macro-debugger/stepper)
+;; (require macro-debugger/expand)
+;; (require (for-syntax racket/syntax))
+
+;; (define-syntax (qpattern stx)
+;;   (syntax-case stx ()
+;;     [(_ m p v)
+;;      #'(list 'car p v)]))
+
+;; (define-syntax (qmatch stx)
+;;   (syntax-case stx (else)
+;;     [(_ m (else r)) #'r]
+;;     [(_ m) #'#f]
+;;     [(_ m (p r) rest ...)
+
+;;      #'(let* ((mm m)
+;;               (pp p)
+;;               (qq (query pp mm)))
+;;          (if (not (null? qq))
+;;              r
+;;              (qmatch mm rest ...)
+;;              ))
+;;      ]))
+
+;; ;; (pretty-print
+;; ;;  (syntax->datum
+;; ;;   (expand-only
+;; ;;    #'(qmatch '(html (body (p "hello")))
+;; ;;        [1 2]
+;; ;;        [3 4]
+;; ;;        [else 5]
+;; ;;        )
+
+;; ;;    (list #'qmatch))))
+
+;;  (qmatch '(html (body (p "hello")))
+;;     [(html (body )) 2]
+;;     [3 4]
+;;     [else 6]
+;;     )
