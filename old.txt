@@ -1,0 +1,86 @@
+;; (define-syntax (mylet-param stx)
+;;   (syntax-case stx ()
+;;     [(_ a ...) #'([(q) (values 1)])]
+;;     ))
+
+;; (define-syntax mylet
+;;   (syntax-rules ()
+;;     [(_ () body ...) (begin body ...)]
+;;     [(_ (a ...) body ... ) (let-values ([mylet-param a] ...) body ...)]
+;;     ))
+
+(print (caar '( ,x)))
+(print (caar '( (unquote x))))
+(display "\n")
+
+
+(html (body (p ,x) (a ,y)))
+(html (body (p (a (@ (href ,x)) ,y)) ))
+(html (body (p (a (@ (href ,x)) ,y)) ... ))
+
+[(html (body (p (a (@ (href ,x)) ,y)) ... ))
+ (map (lambda (x y) (cons x y)) x y)]
+
+
+[(html (body (p (a (@ (href ,x)) ,y)) ... ))
+ (cons x y)]
+
+
+(define-syntax mywhen
+  (syntax-rules ()
+
+    ;; [(_ test e e* ...)
+    ;;  (if test
+    ;;      (begin e e* ...)
+    ;;      #f)]
+
+    ;; [(_ ((unquote x) ...)) `(,(quote x) ...)]
+    [(_ ()) '()]
+    [(_ ((unquote x) y ...)) (cons (quote x) (mywhen (y ...)))]
+    [(_ ((x ...) y ...)) `(,@(mywhen (x ...)  ) ,@(mywhen (  y ...)))]
+    [(_ (_ y ...)) (mywhen (y ...))]
+
+
+    ))
+
+;; (mywhen #t 6)
+;; (mywhen (,a ,b ,c))
+;; (mywhen (html (body (p ,x))))
+(mywhen (,z html  (  ,x 4) 5 ,y))
+
+
+
+
+
+(define-syntax myquery
+  (syntax-rules ()
+    [(_ ()) '()]
+    [(_ ((x ...) y ...) ) 2]
+    [(_ ((x ...) ) ) 3]
+    ;; [(_ (x y ...) ) ]
+
+    ))
+
+(myquery (a))
+
+(define-syntax mywith
+  (syntax-rules ()
+    [(_ input () body) body]
+    [(_ input ((x ...) y ...) body) body]
+    [(_ input (x y ...) body) body]
+
+
+
+    ;; [(_ ((unquote x) ...)) `(,(quote x) ...)]
+    [(_ ()) '()]
+    [(_ ((unquote x) y ...)) (cons (quote x) (mywhen (y ...)))]
+    [(_ ((x ...) y ...)) `(,@(mywhen (x ...)  ) ,@(mywhen (  y ...)))]
+    [(_ (_ y ...)) (mywhen (y ...))]
+
+
+    ))
+
+(mywith '(html (body (p "a") (p "b")))
+        ;(html (body (p ,x)))
+
+        x)

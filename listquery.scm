@@ -5,9 +5,11 @@
   (foldl (lambda (x r) (map cons x r))
          (map list (car lst))
          (cdr lst)))
+
 (merge-list '((1 2 3) ( a b c) (q r s)))
 
-(map (lambda (x y) (list x y)) '(a b c) '(1 2 3))
+;; (map (lambda (x y) (list x y)) '(a b c) '(1 2 3))
+
 
 (define (query2 qs as bs rs depth)
   (cond [(equal? qs '(branch))
@@ -136,7 +138,9 @@
       tail
       (append-reverse (cdr lst) (cons (car lst) tail)))
   )
+
 ;; (append-reverse (list 1 2 3 4) (list 5))
+
 (define (whitespace n)
   (if (> n 0)
       (string-append "  " (whitespace (- n 1)))
@@ -206,15 +210,18 @@
 ;; (qqq 1 ,())
 
 (let* ([q '(branch (leaf body)
-                   (many (branch (leaf p) (value)
-                                 (many (branch (leaf a) (value)))
-                                 ))
-                   (many (value))
-                   (branch (leaf y) (branch (leaf z) (leaf w)))
+                   (many
+                    (branch
+                     (leaf p) (value)
+                     (many (branch (leaf a) (value)))
+                     ))
+                   ;; (many (value))
+                   ;; (branch (leaf y) (branch (leaf z) (leaf w)))
                    )]
        [d '(body
-            "yo" "hello"
-            (p "hello" (a "world") (a "there")) (p "x" (a "y"))
+            "yo1" "hello1"
+            (p "hello" (a "world") (a "there"))
+            (p "x" (a "y"))
             ;; (p "hello") (p "world")
             (y (z w))
             )]

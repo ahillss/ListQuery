@@ -1,3 +1,0 @@
-export PYTHON=python2.7
-npm config set prefix /usr/local
-sudo -E npm install zombie -g
